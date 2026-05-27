@@ -1,6 +1,6 @@
 # DataClean Pro
 
-**Herramienta web para análisis y limpieza de datos CSV con 9 técnicas de imputación.**
+**Herramienta web para análisis y limpieza de datos CSV con 8 técnicas de imputación.**
 
 Aplicación de una sola página (SPA) con backend en FastAPI y frontend en JavaScript vanilla que permite cargar un dataset CSV, explorar sus estadísticas, aplicar imputación de valores faltantes y descargar el resultado limpio.
 
@@ -19,7 +19,8 @@ Aplicación de una sola página (SPA) con backend en FastAPI y frontend en JavaS
 
 - 📂 **Carga de archivos CSV** hasta 50 MB con detección automática de separador y codificación
 - 📊 **Análisis exploratorio** con histogramas, boxplots, heatmap de nulos y estadísticas completas
-- 🧮 **9 técnicas de imputación** con fórmulas matemáticas renderizadas en KaTeX
+- 🧮 **8 técnicas de imputación** con fórmulas matemáticas renderizadas en KaTeX
+- 🌳 **Diagramas SVG** de árbol de decisión y red neuronal integrados en la tarjeta de fórmula
 - 🎨 **Comparación antes/después** con celdas resaltadas para identificar cambios
 - 💾 **Descarga del CSV limpio** con nombre descriptivo que incluye columna, técnica y fecha
 - 🌙 **Tema oscuro académico** con tipografía IBM Plex (Serif · Sans · Mono)
@@ -33,12 +34,11 @@ Aplicación de una sola página (SPA) con backend en FastAPI y frontend en JavaS
 | 01 | **Media** | x̄ = (1/n) · Σᵢ xᵢ | Numérico |
 | 02 | **Mediana** | Med = X[(n+1)/2] | Numérico |
 | 03 | **Moda** | Mo = argmaxₓ freq(x) | Numérico / Categórico |
-| 04 | **Forward Fill** | x̂ᵢ = xⱼ, j = max{k<i : xₖ≠∅} | Numérico / Categórico |
-| 05 | **Backward Fill** | x̂ᵢ = xⱼ, j = min{k>i : xₖ≠∅} | Numérico / Categórico |
-| 06 | **Interpolación lineal** | x̂ᵢ = x_{i₁} + (i−i₁)/(i₂−i₁)·(x_{i₂}−x_{i₁}) | Numérico |
-| 07 | **KNN (regresión)** | x̂ = Σwₖxₖ / Σwₖ ; wₖ=1/d(i,k) | Numérico |
-| 08 | **Regresión lineal** | ŷ = β₀ + β₁x | Numérico |
-| 09 | **KNN clasificación** | ŷ = argmaxc { Σ 𝟙(yₖ=c)·wₖ } | Categórico |
+| 04 | **Interpolación lineal** | x̂ᵢ = x_{i₁} + (i−i₁)/(i₂−i₁)·(x_{i₂}−x_{i₁}) | Numérico |
+| 05 | **KNN Imputación** | x̂ = Σwₖxₖ / Σwₖ ; wₖ=1/d(i,k) | Numérico |
+| 06 | **Regresión lineal** | ŷ = β₀ + β₁x | Numérico |
+| 07 | **Árbol de Decisión** | ΔI(t) = I(t) − (nₗ/n)·I(tₗ) − (nᵣ/n)·I(tᵣ) | Numérico |
+| 08 | **Red Neuronal (MLP)** | a⁽ˡ⁾ = σ(W⁽ˡ⁾·a⁽ˡ⁻¹⁾ + b⁽ˡ⁾), σ=ReLU | Numérico |
 
 ---
 
@@ -47,7 +47,7 @@ Aplicación de una sola página (SPA) con backend en FastAPI y frontend en JavaS
 | Capa | Tecnología |
 |---|---|
 | Backend | Python 3.10+, FastAPI 0.104, uvicorn |
-| Procesamiento | pandas 2.0, NumPy 1.24, scikit-learn 1.3 |
+| Procesamiento | pandas 2.0, NumPy 1.24, scikit-learn 1.3 (DecisionTreeRegressor, MLPRegressor, KNNImputer, IterativeImputer) |
 | Frontend | HTML5, CSS3, JavaScript ES2022 (sin frameworks) |
 | Fórmulas | KaTeX 0.16 (CDN) |
 | Tipografía | IBM Plex Serif · Sans · Mono (Google Fonts) |
@@ -98,11 +98,27 @@ El servidor arranca en **http://127.0.0.1:8000** y abre el navegador automática
 | `GET` | `/api/download` | Descarga el CSV limpio |
 | `POST` | `/api/reset` | Limpia la sesión |
 
-### Ejemplo — imputar con KNN
+### Ejemplos de uso
+
+**KNN Imputación:**
 ```bash
 curl -X POST http://127.0.0.1:8000/api/impute \
   -H "Content-Type: application/json" \
   -d '{"column": "Age", "method": "knn", "params": {"k": 5}}'
+```
+
+**Árbol de Decisión:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/impute \
+  -H "Content-Type: application/json" \
+  -d '{"column": "Fare", "method": "decision_tree"}'
+```
+
+**Red Neuronal MLP:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/impute \
+  -H "Content-Type: application/json" \
+  -d '{"column": "Age", "method": "neural_network"}'
 ```
 
 ---
@@ -129,7 +145,7 @@ DataClean Pro/
 │   └── services/
 │       ├── validator.py      # Validación de archivos CSV
 │       ├── analyzer.py       # Estadísticas, tipos, histogramas, heatmap
-│       └── imputer.py        # Las 9 técnicas de imputación
+│       └── imputer.py        # Las 8 técnicas de imputación
 │
 └── frontend/
     ├── index.html
@@ -152,9 +168,9 @@ DataClean Pro/
 ## Flujo de uso
 
 ```
-1. Cargar      →  Sube un CSV (o usa el dataset Titanic de ejemplo)
+1. Cargar      →  Sube un CSV (o usa uno de los 4 datasets de ejemplo: Titanic, Housing, Pacientes, RRHH)
 2. Analizar    →  Explora estadísticas, distribuciones y mapa de nulos
-3. Imputar     →  Elige columna + técnica → aplica al servidor
+3. Imputar     →  Elige columna + técnica (incluyendo Árbol de Decisión y Red Neuronal) → aplica al servidor
 4. Exportar    →  Compara antes/después → descarga el CSV limpio
 ```
 
