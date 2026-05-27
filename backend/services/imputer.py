@@ -1,5 +1,5 @@
 """
-imputer.py — Las 9 técnicas de imputación de DataClean Pro.
+imputer.py — Las 8 técnicas de imputación de DataClean Pro.
 
 Cada técnica es una función independiente con docstring que incluye la fórmula
 matemática. La función pública impute() despacha al método correcto.
@@ -14,7 +14,8 @@ from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neural_network import MLPRegressor
 
 
 # ── Técnica 1: Media ─────────────────────────────────────────────────────────
@@ -80,35 +81,7 @@ def _impute_mode(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
     return result, null_idx
 
 
-# ── Técnica 4: Forward Fill ───────────────────────────────────────────────────
-
-def _impute_ffill(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
-    """
-    Fórmula: x̂ᵢ = xⱼ, j = max{k<i: xₖ≠∅}
-    Propaga hacia adelante el último valor observado.
-    Válida para series temporales o datos con orden natural.
-    """
-    series = df[column].copy()
-    null_idx = set(series[series.isna()].index.tolist())
-    result = series.ffill()
-    return result, null_idx
-
-
-# ── Técnica 5: Backward Fill ──────────────────────────────────────────────────
-
-def _impute_bfill(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
-    """
-    Fórmula: x̂ᵢ = xⱼ, j = min{k>i: xₖ≠∅}
-    Propaga hacia atrás el siguiente valor observado.
-    Válida para series temporales donde el siguiente valor es más representativo.
-    """
-    series = df[column].copy()
-    null_idx = set(series[series.isna()].index.tolist())
-    result = series.bfill()
-    return result, null_idx
-
-
-# ── Técnica 6: Interpolación Lineal ──────────────────────────────────────────
+# ── Técnica 4: Interpolación Lineal ──────────────────────────────────────────
 
 def _impute_linear(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
     """
@@ -123,7 +96,7 @@ def _impute_linear(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
     return result, null_idx
 
 
-# ── Técnica 7: KNN (K vecinos) ────────────────────────────────────────────────
+# ── Técnica 5: KNN (K vecinos) ────────────────────────────────────────────────
 
 def _impute_knn(df: pd.DataFrame, column: str, k: int = 3) -> Tuple[pd.Series, Set[int]]:
     """
@@ -149,7 +122,7 @@ def _impute_knn(df: pd.DataFrame, column: str, k: int = 3) -> Tuple[pd.Series, S
     return result, null_idx
 
 
-# ── Técnica 8: Regresión Lineal (Predicción) ──────────────────────────────────
+# ── Técnica 6: Regresión Lineal (Predicción) ──────────────────────────────────
 
 def _impute_regression(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
     """
@@ -178,38 +151,66 @@ def _impute_regression(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[in
     return result, null_idx
 
 
-# ── Técnica 9: Clasificación KNN (Categórica) ────────────────────────────────
+# ── Técnica 7: Árbol de Decisión (Regresión) ─────────────────────────────────
 
-def _impute_knn_class(df: pd.DataFrame, column: str, k: int = 3) -> Tuple[pd.Series, Set[int]]:
+def _impute_decision_tree(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
     """
-    Fórmula: ŷ = argmaxc { Σ 𝟙(yₖ=c) · wₖ }
-    Variante categórica de KNN: codifica la variable con LabelEncoder,
-    aplica KNNImputer y decodifica de vuelta a las categorías originales.
-    Requiere columna categórica o string.
+    Fórmula: ΔI(t) = I(t) − (nₗ/n)·I(tₗ) − (nᵣ/n)·I(tᵣ)
+    Usa IterativeImputer (MICE) con DecisionTreeRegressor como estimador.
+    Aprende particiones no lineales del espacio de features para predecir faltantes.
+    Requiere columna numérica.
     """
     series = df[column].copy()
     null_idx = set(series[series.isna()].index.tolist())
 
-    # Codificar la columna objetivo
-    le = LabelEncoder()
-    non_null = series.dropna()
-    le.fit(non_null.astype(str))
-
-    encoded = series.astype(str).map(
-        lambda x: le.transform([x])[0] if x != "nan" else np.nan
-    )
-
-    # Usar columnas numéricas como features para calcular distancias
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    work = pd.concat([encoded.rename(column), df[num_cols]], axis=1)
+    if column not in num_cols:
+        num_cols = [column] + num_cols
+    subset = df[num_cols].copy()
 
-    imp = KNNImputer(n_neighbors=max(1, k), weights="distance")
-    filled = imp.fit_transform(work)
-    encoded_col = np.round(filled[:, 0]).astype(int)
+    imp = IterativeImputer(
+        estimator=DecisionTreeRegressor(max_depth=5, random_state=42),
+        max_iter=10,
+        random_state=42,
+    )
+    filled = imp.fit_transform(subset)
+    filled_df = pd.DataFrame(filled, index=df.index, columns=num_cols)
 
-    # Clampear al rango válido de clases
-    encoded_col = np.clip(encoded_col, 0, len(le.classes_) - 1)
-    result = pd.Series(le.inverse_transform(encoded_col), index=df.index, name=column)
+    result = filled_df[column].round(4)
+    return result, null_idx
+
+
+# ── Técnica 8: Red Neuronal MLP ───────────────────────────────────────────────
+
+def _impute_neural_network(df: pd.DataFrame, column: str) -> Tuple[pd.Series, Set[int]]:
+    """
+    Fórmula: a^(l) = σ(W^(l)·a^(l-1) + b^(l)),  σ(z) = max(0, z)
+    Usa IterativeImputer (MICE) con MLPRegressor como estimador.
+    Aprende representaciones no lineales profundas entre columnas.
+    Requiere columna numérica.
+    """
+    series = df[column].copy()
+    null_idx = set(series[series.isna()].index.tolist())
+
+    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if column not in num_cols:
+        num_cols = [column] + num_cols
+    subset = df[num_cols].copy()
+
+    imp = IterativeImputer(
+        estimator=MLPRegressor(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            max_iter=200,
+            random_state=42,
+        ),
+        max_iter=5,
+        random_state=42,
+    )
+    filled = imp.fit_transform(subset)
+    filled_df = pd.DataFrame(filled, index=df.index, columns=num_cols)
+
+    result = filled_df[column].round(4)
     return result, null_idx
 
 
@@ -227,8 +228,8 @@ def impute(
     Args:
         df: DataFrame actual (df_current de la sesión).
         column: Nombre de la columna a imputar.
-        method: Identificador de la técnica (mean|median|mode|ffill|bfill|
-                linear|knn|regression|knn_class).
+        method: Identificador de la técnica (mean|median|mode|linear|knn|
+                regression|decision_tree|neural_network).
         params: Parámetros adicionales (k para KNN).
 
     Returns:
@@ -250,15 +251,14 @@ def impute(
     k = int(params.get("k", 3))
 
     dispatch = {
-        "mean":       lambda: _impute_mean(df, column),
-        "median":     lambda: _impute_median(df, column),
-        "mode":       lambda: _impute_mode(df, column),
-        "ffill":      lambda: _impute_ffill(df, column),
-        "bfill":      lambda: _impute_bfill(df, column),
-        "linear":     lambda: _impute_linear(df, column),
-        "knn":        lambda: _impute_knn(df, column, k=k),
-        "regression": lambda: _impute_regression(df, column),
-        "knn_class":  lambda: _impute_knn_class(df, column, k=k),
+        "mean":          lambda: _impute_mean(df, column),
+        "median":        lambda: _impute_median(df, column),
+        "mode":          lambda: _impute_mode(df, column),
+        "linear":        lambda: _impute_linear(df, column),
+        "knn":           lambda: _impute_knn(df, column, k=k),
+        "regression":    lambda: _impute_regression(df, column),
+        "decision_tree": lambda: _impute_decision_tree(df, column),
+        "neural_network": lambda: _impute_neural_network(df, column),
     }
 
     if method not in dispatch:

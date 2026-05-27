@@ -1,10 +1,12 @@
 /**
- * formulas.js — Catálogo de las 9 técnicas de imputación.
+ * formulas.js — Catálogo de las 8 técnicas de imputación.
  * Cada técnica contiene: nombre, fórmula KaTeX, fórmula unicode,
- * descripción, variables, cuándo usar, riesgo, complejidad y tipos aplicables.
+ * descripción, variables, cuándo usar, riesgo, complejidad, tipos aplicables
+ * y un diagrama SVG opcional para técnicas de Machine Learning.
  */
 
 const TECHNIQUES = [
+  // ── 01 · Media ─────────────────────────────────────────────────────────────
   {
     id: "mean",
     name: "Media (Mean)",
@@ -24,7 +26,10 @@ const TECHNIQUES = [
     ],
     risk: "Sesga la varianza hacia 0 y atenúa correlaciones con otras variables.",
     complexity: "O(n)",
+    diagram: null,
   },
+
+  // ── 02 · Mediana ────────────────────────────────────────────────────────────
   {
     id: "median",
     name: "Mediana (Median)",
@@ -43,13 +48,16 @@ const TECHNIQUES = [
     ],
     risk: "También reduce la varianza; no preserva relaciones con otras variables.",
     complexity: "O(n log n)",
+    diagram: null,
   },
+
+  // ── 03 · Moda ───────────────────────────────────────────────────────────────
   {
     id: "mode",
     name: "Moda (Mode)",
     short: "Moda",
     applies: ["int", "float", "categorical", "string"],
-    library: "SimpleImputer(strategy='most_frequent')",
+    library: "pandas.Series.mode()",
     katex: "\\text{Mo} = \\underset{x \\in \\Omega}{\\arg\\max}\\; \\operatorname{freq}(x)",
     unicode: "Mo = argmaxₓ freq(x)",
     description:
@@ -62,45 +70,10 @@ const TECHNIQUES = [
     ],
     risk: "Concentra masa en una sola categoría; reduce diversidad.",
     complexity: "O(n)",
+    diagram: null,
   },
-  {
-    id: "ffill",
-    name: "Forward Fill",
-    short: "Forward Fill",
-    applies: ["int", "float", "categorical", "string"],
-    library: "pandas.DataFrame.ffill()",
-    katex: "\\hat{x}_i = x_j,\\quad j = \\max\\{k < i : x_k \\neq \\varnothing\\}",
-    unicode: "x̂ᵢ = xⱼ, j = max{k<i: xₖ ≠ ∅}",
-    description:
-      "Propaga hacia adelante el último valor observado. La fila i hereda el valor de la fila anterior no nula.",
-    when_to_use:
-      "Series temporales o datos con orden natural (sensores, logs, precios).",
-    variables: [
-      ["x̂ᵢ", "valor imputado en la posición i"],
-      ["j", "índice del último valor no nulo antes de i"],
-    ],
-    risk: "Suaviza tendencias; no funciona si el primer valor es nulo.",
-    complexity: "O(n)",
-  },
-  {
-    id: "bfill",
-    name: "Backward Fill",
-    short: "Backward Fill",
-    applies: ["int", "float", "categorical", "string"],
-    library: "pandas.DataFrame.bfill()",
-    katex: "\\hat{x}_i = x_j,\\quad j = \\min\\{k > i : x_k \\neq \\varnothing\\}",
-    unicode: "x̂ᵢ = xⱼ, j = min{k>i: xₖ ≠ ∅}",
-    description:
-      "Propaga hacia atrás el siguiente valor observado. Útil cuando los valores recientes representan mejor el estado.",
-    when_to_use:
-      "Series temporales en las que el siguiente valor es referencia más fiable que el anterior.",
-    variables: [
-      ["x̂ᵢ", "valor imputado en la posición i"],
-      ["j", "índice del siguiente valor no nulo después de i"],
-    ],
-    risk: "Mismo riesgo que ffill en sentido opuesto.",
-    complexity: "O(n)",
-  },
+
+  // ── 04 · Interpolación Lineal ───────────────────────────────────────────────
   {
     id: "linear",
     name: "Interpolación Lineal",
@@ -120,10 +93,13 @@ const TECHNIQUES = [
     ],
     risk: "Asume linealidad local; falla con cambios bruscos.",
     complexity: "O(n)",
+    diagram: null,
   },
+
+  // ── 05 · KNN Imputación ─────────────────────────────────────────────────────
   {
     id: "knn",
-    name: "KNN (K vecinos)",
+    name: "KNN Imputación",
     short: "KNN",
     applies: ["int", "float"],
     library: "KNNImputer(n_neighbors=k)",
@@ -141,7 +117,10 @@ const TECHNIQUES = [
     params: [{ id: "k", name: "K vecinos", default: 3, min: 1, max: 15 }],
     risk: "Costoso para datasets grandes (O(n²·m)); sensible a la escala.",
     complexity: "O(n² · m)",
+    diagram: null,
   },
+
+  // ── 06 · Regresión Lineal ───────────────────────────────────────────────────
   {
     id: "regression",
     name: "Regresión Lineal",
@@ -161,27 +140,53 @@ const TECHNIQUES = [
     ],
     risk: "Asume linealidad; subestima la varianza residual.",
     complexity: "O(n · m)",
+    diagram: null,
   },
+
+  // ── 07 · Árbol de Decisión ──────────────────────────────────────────────────
   {
-    id: "knn_class",
-    name: "Clasificación KNN",
-    short: "KNN Cat.",
-    applies: ["categorical", "string"],
-    library: "KNNImputer + LabelEncoder",
-    katex: "\\hat{y} = \\underset{c \\in \\mathcal{C}}{\\arg\\max} \\sum_{k=1}^{K} \\mathbb{1}(y_k = c)\\, w_k",
-    unicode: "ŷ = argmax_c { Σ 𝟙(yₖ=c) · wₖ }",
+    id: "decision_tree",
+    name: "Árbol de Decisión",
+    short: "Árbol",
+    applies: ["int", "float"],
+    library: "IterativeImputer(estimator=DecisionTreeRegressor)",
+    katex: "\\Delta I(t) = I(t) - \\frac{n_L}{n}\\,I(t_L) - \\frac{n_R}{n}\\,I(t_R)",
+    unicode: "ΔI(t) = I(t) − (nₗ/n)·I(tₗ) − (nᵣ/n)·I(tᵣ)",
     description:
-      "Variante categórica de KNN: codifica con LabelEncoder, vota la clase más frecuente entre los K vecinos ponderada por distancia.",
+      "Usa un árbol de regresión como estimador dentro del esquema MICE iterativo: aprende particiones del espacio de features para predecir cada valor faltante.",
     when_to_use:
-      "Variables categóricas con relaciones a otras columnas numéricas o codificadas.",
+      "Relaciones no lineales entre variables; datos mixtos; outliers o distribuciones asimétricas.",
     variables: [
-      ["c", "clase candidata"],
-      ["𝟙(·)", "función indicadora (1 si yₖ=c, 0 si no)"],
-      ["wₖ", "peso del k-ésimo vecino (inverso de la distancia)"],
+      ["I(t)", "impureza del nodo t — MSE en regresión"],
+      ["nₗ, nᵣ", "muestras en rama izquierda y derecha"],
+      ["n", "total de muestras en el nodo t"],
     ],
-    params: [{ id: "k", name: "K vecinos", default: 3, min: 1, max: 15 }],
-    risk: "Requiere codificar todas las variables; sensible a la escala.",
-    complexity: "O(n² · m)",
+    risk: "Propenso a sobreajuste con max_depth elevado; más lento que métodos estadísticos.",
+    complexity: "O(n · m · log n)",
+    diagram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 185" style="width:100%;max-width:300px;display:block;margin:0 auto"><line x1="150" y1="36" x2="82" y2="82" stroke="#334155" stroke-width="1.2"/><line x1="150" y1="36" x2="218" y2="82" stroke="#334155" stroke-width="1.2"/><line x1="82" y1="104" x2="46" y2="148" stroke="#334155" stroke-width="1.2"/><line x1="82" y1="104" x2="118" y2="148" stroke="#334155" stroke-width="1.2"/><line x1="218" y1="104" x2="182" y2="148" stroke="#334155" stroke-width="1.2"/><line x1="218" y1="104" x2="254" y2="148" stroke="#334155" stroke-width="1.2"/><rect x="112" y="10" width="76" height="26" rx="5" fill="#0f172a" stroke="#0ea5e9" stroke-width="1.5"/><text x="150" y="27" text-anchor="middle" font-family="monospace" font-size="9" fill="#0ea5e9">x &#x2264; &#x03B8; ?</text><rect x="52" y="82" width="60" height="22" rx="5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/><text x="82" y="97" text-anchor="middle" font-family="monospace" font-size="8" fill="#7dd3fc">x&#x2081; &#x2264; &#x03B8;&#x2081;</text><rect x="188" y="82" width="60" height="22" rx="5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/><text x="218" y="97" text-anchor="middle" font-family="monospace" font-size="8" fill="#7dd3fc">x&#x2082; &#x2264; &#x03B8;&#x2082;</text><text x="107" y="62" font-family="monospace" font-size="7.5" fill="#64748b">s&#xED;</text><text x="191" y="62" font-family="monospace" font-size="7.5" fill="#64748b">no</text><text x="55" y="130" font-family="monospace" font-size="7.5" fill="#64748b">s&#xED;</text><text x="103" y="130" font-family="monospace" font-size="7.5" fill="#64748b">no</text><text x="153" y="130" font-family="monospace" font-size="7.5" fill="#64748b">s&#xED;</text><text x="243" y="130" font-family="monospace" font-size="7.5" fill="#64748b">no</text><rect x="22" y="148" width="48" height="24" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.2"/><text x="46" y="164" text-anchor="middle" font-family="monospace" font-size="9" fill="#6ee7b7">&#x0177;&#x2081;</text><rect x="94" y="148" width="48" height="24" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.2"/><text x="118" y="164" text-anchor="middle" font-family="monospace" font-size="9" fill="#6ee7b7">&#x0177;&#x2082;</text><rect x="158" y="148" width="48" height="24" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.2"/><text x="182" y="164" text-anchor="middle" font-family="monospace" font-size="9" fill="#6ee7b7">&#x0177;&#x2083;</text><rect x="230" y="148" width="48" height="24" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.2"/><text x="254" y="164" text-anchor="middle" font-family="monospace" font-size="9" fill="#6ee7b7">&#x0177;&#x2084;</text></svg>`,
+  },
+
+  // ── 08 · Red Neuronal MLP ───────────────────────────────────────────────────
+  {
+    id: "neural_network",
+    name: "Red Neuronal (MLP)",
+    short: "Red Neuronal",
+    applies: ["int", "float"],
+    library: "IterativeImputer(estimator=MLPRegressor)",
+    katex: "a^{(l)} = \\sigma\\!\\left(W^{(l)}\\,a^{(l-1)} + b^{(l)}\\right),\\quad \\sigma(z) = \\max(0,\\,z)",
+    unicode: "a^(l) = σ(W^(l)·a^(l-1) + b^(l)),  σ(z) = max(0, z)",
+    description:
+      "Perceptrón multicapa (MLP) como estimador MICE: aprende representaciones no lineales profundas de las relaciones entre columnas para imputar cada valor faltante.",
+    when_to_use:
+      "Datasets con relaciones complejas y no lineales; cuando regresión o árbol no capturan el patrón subyacente.",
+    variables: [
+      ["a^(l)", "vector de activaciones de la capa l"],
+      ["W^(l), b^(l)", "pesos y sesgos de la capa l"],
+      ["σ", "función de activación ReLU: max(0, z)"],
+    ],
+    risk: "El más costoso computacionalmente; puede sobreajustar en datasets pequeños.",
+    complexity: "O(n · m · epochs)",
+    diagram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 185" style="width:100%;max-width:300px;display:block;margin:0 auto"><line x1="56" y1="48" x2="136" y2="35" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="48" x2="136" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="48" x2="136" y2="145" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="90" x2="136" y2="35" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="90" x2="136" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="90" x2="136" y2="145" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="132" x2="136" y2="35" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="132" x2="136" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><line x1="56" y1="132" x2="136" y2="145" stroke="#1e3a5f" stroke-width="0.9"/><line x1="164" y1="35" x2="242" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><line x1="164" y1="90" x2="242" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><line x1="164" y1="145" x2="242" y2="90" stroke="#1e3a5f" stroke-width="0.9"/><circle cx="40" cy="48" r="16" fill="#0a0a0f" stroke="#0ea5e9" stroke-width="1.5"/><text x="40" y="52" text-anchor="middle" font-family="monospace" font-size="9" fill="#7dd3fc">x&#x2081;</text><circle cx="40" cy="90" r="16" fill="#0a0a0f" stroke="#0ea5e9" stroke-width="1.5"/><text x="40" y="94" text-anchor="middle" font-family="monospace" font-size="9" fill="#7dd3fc">x&#x2082;</text><circle cx="40" cy="132" r="16" fill="#0a0a0f" stroke="#0ea5e9" stroke-width="1.5"/><text x="40" y="136" text-anchor="middle" font-family="monospace" font-size="9" fill="#7dd3fc">x&#x2083;</text><circle cx="150" cy="35" r="14" fill="#0a0a0f" stroke="#8b5cf6" stroke-width="1.5"/><text x="150" y="39" text-anchor="middle" font-family="monospace" font-size="8" fill="#c4b5fd">h&#x2081;</text><circle cx="150" cy="90" r="14" fill="#0a0a0f" stroke="#8b5cf6" stroke-width="1.5"/><text x="150" y="94" text-anchor="middle" font-family="monospace" font-size="8" fill="#c4b5fd">h&#x2082;</text><circle cx="150" cy="145" r="14" fill="#0a0a0f" stroke="#8b5cf6" stroke-width="1.5"/><text x="150" y="149" text-anchor="middle" font-family="monospace" font-size="8" fill="#c4b5fd">h&#x2083;</text><circle cx="260" cy="90" r="18" fill="#0a0a0f" stroke="#10b981" stroke-width="1.8"/><text x="260" y="95" text-anchor="middle" font-family="monospace" font-size="11" fill="#6ee7b7">&#x0177;</text><text x="40" y="172" text-anchor="middle" font-family="monospace" font-size="7.5" fill="#475569">entrada</text><text x="150" y="172" text-anchor="middle" font-family="monospace" font-size="7.5" fill="#475569">oculta</text><text x="260" y="120" text-anchor="middle" font-family="monospace" font-size="7.5" fill="#475569">salida</text><rect x="128" y="6" width="44" height="13" rx="3" fill="#1e1540" stroke="#8b5cf6" stroke-width="0.8"/><text x="150" y="16" text-anchor="middle" font-family="monospace" font-size="7" fill="#a78bfa">ReLU</text></svg>`,
   },
 ];
 

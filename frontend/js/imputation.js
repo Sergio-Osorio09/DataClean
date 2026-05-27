@@ -45,7 +45,7 @@ async function renderImputation(container) {
         </div>
         <div style="display:flex;gap:8px">
           <span class="tag tag-num">RF-06 · Modelo matemático</span>
-          <span class="tag tag-num">RF-07 · 9 técnicas</span>
+          <span class="tag tag-num">RF-07 · 8 técnicas</span>
         </div>
       </div>
 
@@ -66,7 +66,7 @@ async function renderImputation(container) {
             <div style="padding:12px 16px 8px;border-bottom:1px solid var(--border)">
               <h3 class="h-card" style="color:var(--text-primary)">Técnica</h3>
               <div class="annot" style="margin-top:2px" id="tech-sub">
-                ${activeCol ? `compatibles con ${activeCol.type}` : "9 técnicas disponibles"}
+                ${activeCol ? `compatibles con ${activeCol.type}` : `${window.TECHNIQUES.length} técnicas disponibles`}
               </div>
             </div>
             <div class="tech-list" id="tech-list"></div>
@@ -162,7 +162,7 @@ function _refreshImputation() {
 
   // Tech subtitle
   const techSub = document.getElementById("tech-sub");
-  if (techSub) techSub.textContent = activeCol ? `compatibles con ${activeCol.type}` : "9 técnicas disponibles";
+  if (techSub) techSub.textContent = activeCol ? `compatibles con ${activeCol.type}` : `${techniques.length} técnicas disponibles`;
 
   // Library annotation
   const techLib = document.getElementById("tech-lib");
@@ -251,40 +251,6 @@ function _buildExample(tech, col, params) {
       };
     }
 
-    case 'ffill': {
-      const ex = (col.type === 'categorical' || col.type === 'string')
-        ? `"${col.mode}"` : f(col.q25);
-      return {
-        info: `${col.nulls} nulos en ${col.total} filas`,
-        data: `recorre la columna de arriba (fila 0) hacia abajo (fila ${col.total - 1})`,
-        steps: [
-          `Localizar primer nulo → fila iₓ`,
-          `Tomar el último valor observado antes de iₓ: xᵢₓ₋₁ = ${ex}`,
-          `x̂ᵢₓ = ${ex}`,
-        ],
-        result: ex,
-        label: `Resultado para ese nulo (ejemplo)`,
-        note: 'Cada nulo recibe el valor de su fila previa; el resultado varía por posición.',
-      };
-    }
-
-    case 'bfill': {
-      const ex = (col.type === 'categorical' || col.type === 'string')
-        ? `"${col.mode}"` : f(col.q75);
-      return {
-        info: `${col.nulls} nulos en ${col.total} filas`,
-        data: `recorre la columna de abajo (fila ${col.total - 1}) hacia arriba (fila 0)`,
-        steps: [
-          `Localizar primer nulo → fila iₓ`,
-          `Tomar el siguiente valor observado después de iₓ: xᵢₓ₊₁ = ${ex}`,
-          `x̂ᵢₓ = ${ex}`,
-        ],
-        result: ex,
-        label: `Resultado para ese nulo (ejemplo)`,
-        note: 'Cada nulo recibe el valor de su fila siguiente; el resultado varía por posición.',
-      };
-    }
-
     case 'linear': {
       const x1 = col.q25 ?? col.min ?? 0;
       const x2 = col.q75 ?? col.max ?? 1;
@@ -345,21 +311,35 @@ function _buildExample(tech, col, params) {
       };
     }
 
-    case 'knn_class': {
-      const cats = col.categories || [];
-      const top  = cats.slice(0, Math.min(k, 3));
-      const pct  = n > 0 && cats[0] ? (cats[0].count / n * 100).toFixed(1) : '?';
+    case 'decision_tree': {
       return {
-        info: `k = ${k}  ·  LabelEncoder + KNNImputer`,
-        data: cats.slice(0, 5).map(c => `"${c.value}": ${c.count}`).join('  ·  ') + (cats.length > 5 ? '  …' : ''),
+        info: `IterativeImputer · DecisionTreeRegressor · max_depth=5`,
+        data: `rango=[${f(col.min)}, ${f(col.max)}]  ·  media=${f(col.mean)}  ·  σ=${f(col.std)}`,
         steps: [
-          `Codificar: ${cats.slice(0, 3).map((c, i) => `"${c.value}" → ${i}`).join(',  ')}${cats.length > 3 ? ',  …' : ''}`,
-          `k = ${k} vecinos votan (ejemplo): ${top.map(c => `"${c.value}"`).join(', ')}`,
-          `Ganador por mayoría ponderada: "${col.mode}"  (${pct}% del dataset)`,
+          `El árbol aprende: si xⱼ ≤ θ → rama izquierda, si xⱼ > θ → rama derecha`,
+          `Criterio de partición: MSE = (1/n)·Σ(yᵢ − ȳ)²  minimizado en cada nodo`,
+          `Hoja con rango [${f(col.q25)}, ${f(col.q75)}] → ŷ ≈ ${f(col.mean)}`,
         ],
-        result: `"${col.mode}"`,
-        label: `Clase predicha (ejemplo ilustrativo)`,
-        note: 'Cada nulo puede recibir una clase distinta según sus vecinos reales.',
+        result: `≈ ${f(col.mean)}`,
+        label: `Predicción de la hoja correspondiente (ejemplo)`,
+        note: 'Cada nulo recibe el valor promedio de la hoja donde cae según sus features.',
+      };
+    }
+
+    case 'neural_network': {
+      const lo = col.mean != null && col.std != null ? (col.mean - col.std).toFixed(2) : '?';
+      const hi = col.mean != null && col.std != null ? (col.mean + col.std).toFixed(2) : '?';
+      return {
+        info: `MLPRegressor · capas ocultas=(64, 32) · ReLU · max_iter=200`,
+        data: `media=${f(col.mean)}  ·  σ=${f(col.std)}  ·  rango=[${f(col.min)}, ${f(col.max)}]`,
+        steps: [
+          `Entrada: x = [otras columnas numéricas del registro con nulo]`,
+          `Capa oculta: a⁽ˡ⁾ = ReLU(W⁽ˡ⁾·a⁽ˡ⁻¹⁾ + b⁽ˡ⁾)  →  64 → 32 neuronas`,
+          `Salida lineal: ŷ ≈ ${f(col.mean)}  ·  intervalo μ±σ: [${lo}, ${hi}]`,
+        ],
+        result: `≈ ${f(col.mean)}`,
+        label: `Predicción esperada (varía por fila)`,
+        note: 'Cada registro obtiene una predicción distinta según el patrón aprendido.',
       };
     }
 
@@ -429,7 +409,7 @@ function _renderFormulaCard(container, tech, activeCol) {
   container.innerHTML = `
     <div class="formula-card fade-in">
       <div class="formula-eyebrow">
-        <span class="num">TÉCNICA · ${String(techIdx + 1).padStart(2, "0")} / 09</span>
+        <span class="num">TÉCNICA · ${String(techIdx + 1).padStart(2, "0")} / ${String(window.TECHNIQUES.length).padStart(2, "0")}</span>
         <span class="tag">${tech.complexity}</span>
         <span class="tag">${tech.applies.join(" · ")}</span>
       </div>
@@ -437,6 +417,8 @@ function _renderFormulaCard(container, tech, activeCol) {
       <p class="formula-desc">${tech.description}</p>
 
       <div class="formula-render" data-label="Modelo matemático" id="formula-render"></div>
+
+      ${tech.diagram ? `<div class="formula-diagram" data-label="Estructura del modelo">${tech.diagram}</div>` : ""}
 
       ${_exampleHTML(_buildExample(tech, activeCol, AppState.params), activeCol)}
 
