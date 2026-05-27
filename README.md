@@ -181,6 +181,18 @@ DataClean Pro/
 > El tema oscuro académico usa IBM Plex Serif para títulos, IBM Plex Mono para datos
 > y un esquema de color basado en `#0ea5e9` (cyan) sobre fondo `#0a0a0f`.
 
+<img width="1290" height="862" alt="Captura de pantalla 2026-05-27 112358" src="https://github.com/user-attachments/assets/05855a1d-3c7b-4552-84a8-8b72aa72cded" />
+
+<img width="1291" height="860" alt="Captura de pantalla 2026-05-27 112437" src="https://github.com/user-attachments/assets/de0dd7b4-deb0-4091-af19-072ab0e254c5" />
+
+<img width="1291" height="863" alt="Captura de pantalla 2026-05-27 112520" src="https://github.com/user-attachments/assets/a9db8354-091f-4100-9f5c-1ac5b6323f5c" />
+
+<img width="1287" height="860" alt="Captura de pantalla 2026-05-27 112730" src="https://github.com/user-attachments/assets/2a45cd81-191f-4dd5-8d2d-e0cdbb1cd145" />
+
+<img width="1286" height="859" alt="Captura de pantalla 2026-05-27 112822" src="https://github.com/user-attachments/assets/5b89994d-a80d-4c18-825a-3981978c124a" />
+
+<img width="1287" height="861" alt="Captura de pantalla 2026-05-27 112846" src="https://github.com/user-attachments/assets/976762e8-f3ed-4519-9711-59bbcf0efd9f" />
+
 ---
 
 ## Licencia
