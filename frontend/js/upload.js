@@ -55,7 +55,7 @@ function renderUpload(container) {
           <div class="card card-tight">
             <div class="card-header">
               <h3 class="h-card">Datasets de ejemplo</h3>
-              <span class="annot">4 disponibles</span>
+              <span class="annot">3 disponibles</span>
             </div>
             <div class="samples-card">
               <div class="sample-row" id="sample-titanic">
@@ -63,14 +63,6 @@ function renderUpload(container) {
                 <div class="sample-meta">
                   <span class="sample-name">titanic_train.csv</span>
                   <span class="sample-desc">50 filas · 12 cols · Age, Cabin, Embarked nulos</span>
-                </div>
-                <span class="btn btn-sm btn-ghost">Usar →</span>
-              </div>
-              <div class="sample-row" id="sample-housing">
-                <div class="sample-icon">H</div>
-                <div class="sample-meta">
-                  <span class="sample-name">housing_prices.csv</span>
-                  <span class="sample-desc">55 filas · 11 cols · Garage, Pool, LotArea nulos</span>
                 </div>
                 <span class="btn btn-sm btn-ghost">Usar →</span>
               </div>
@@ -147,7 +139,6 @@ function _bindUploadEvents() {
   });
 
   document.getElementById("sample-titanic")?.addEventListener("click", () => _loadSampleTitanic());
-  document.getElementById("sample-housing")?.addEventListener("click", () => _loadSampleHousing());
   document.getElementById("sample-medical")?.addEventListener("click", () => _loadSampleMedical());
   document.getElementById("sample-hr")?.addEventListener("click",      () => _loadSampleHR());
 }
@@ -238,72 +229,7 @@ async function _loadSampleTitanic() {
   await _handleFile(file);
 }
 
-// ── Dataset 2: Housing Prices ────────────────────────────────────────
-// Nulos: LotArea (8), YearBuilt (5), GarageType (7), GarageArea (7), PoolArea (50)
-async function _loadSampleHousing() {
-  const rows = [
-    "Id,Neighborhood,LotArea,YearBuilt,OverallQual,Bedrooms,Bathrooms,GarageType,GarageArea,PoolArea,SalePrice",
-    "1,CollgCr,8450,2003,7,3,2,Attchd,548,,208500",
-    "2,Veenker,9600,1976,6,3,2,Attchd,460,,181500",
-    "3,Crawfor,11250,2001,7,3,2,Attchd,608,,223500",
-    "4,NoRidge,9550,1915,7,3,3,Detchd,642,452,140000",
-    "5,Mitchel,14260,2000,8,4,2,Attchd,836,,250000",
-    "6,Somerst,14115,1993,5,2,1,,,,,143000",
-    "7,NWAmes,,2004,8,4,3,Attchd,636,,307000",
-    "8,OldTown,10382,1910,4,3,2,Detchd,356,,200000",
-    "9,BrkSide,6120,1964,4,3,1,Detchd,285,,129900",
-    "10,Somerst,7420,,6,3,2,Attchd,490,,182000",
-    "11,CollgCr,11241,1988,5,3,1,,,,,142000",
-    "12,Crawfor,13830,2004,8,4,3,Attchd,714,,307000",
-    "13,CollgCr,9978,1923,5,3,1,Detchd,352,,115000",
-    "14,Mitchel,,1973,5,3,2,Attchd,480,,129500",
-    "15,NoRidge,14803,2007,9,4,4,BuiltIn,800,561,325000",
-    "16,NWAmes,5000,1975,4,2,1,,,,,78000",
-    "17,OldTown,10703,1936,4,3,1,Detchd,252,,94000",
-    "18,Somerst,10791,,5,3,2,Attchd,506,,157000",
-    "19,CollgCr,8099,2005,7,3,2,Attchd,526,,193500",
-    "20,NWAmes,,1970,5,3,2,Detchd,378,,136000",
-    "21,BrkSide,6000,1968,4,2,1,Detchd,268,,89000",
-    "22,Mitchel,14000,2001,8,4,3,Attchd,762,,270000",
-    "23,SawyerW,6030,1978,4,2,1,,,,,92000",
-    "24,CollgCr,7800,2000,6,3,2,Attchd,510,,178000",
-    "25,Crawfor,,1998,7,3,2,Attchd,600,,215000",
-    "26,NoRidge,12000,2009,9,5,4,BuiltIn,898,,368000",
-    "27,OldTown,9000,1901,3,2,1,Detchd,220,,65000",
-    "28,Somerst,8450,1992,5,3,2,Attchd,476,,145000",
-    "29,NWAmes,7500,2006,7,3,2,Attchd,652,,234000",
-    "30,CollgCr,,1999,6,3,2,Attchd,534,,172000",
-    "31,BrkSide,4500,1960,3,2,1,,,,,71000",
-    "32,Mitchel,13175,2003,8,4,3,Attchd,770,,267000",
-    "33,OldTown,9825,1916,4,3,2,Detchd,300,,118000",
-    "34,Crawfor,10800,,7,3,2,Attchd,596,,208000",
-    "35,NoRidge,16200,2008,10,5,4,BuiltIn,920,480,395000",
-    "36,CollgCr,8770,2001,7,3,2,Attchd,554,,215000",
-    "37,Mitchel,,1974,5,3,2,Detchd,400,,126000",
-    "38,Somerst,10875,1997,6,3,2,Attchd,520,,168000",
-    "39,NWAmes,5000,1965,4,2,1,,,,,82000",
-    "40,OldTown,7200,1904,3,2,1,Detchd,228,,68000",
-    "41,BrkSide,5400,,4,2,1,Detchd,272,,86000",
-    "42,CollgCr,8100,2003,8,4,3,Attchd,720,400,252000",
-    "43,Crawfor,9600,2007,8,4,3,Attchd,734,,274000",
-    "44,NoRidge,,2004,9,4,3,Attchd,868,,342000",
-    "45,Mitchel,12250,1999,7,3,2,Attchd,640,,212000",
-    "46,Somerst,10500,2002,7,4,3,Attchd,684,,235000",
-    "47,NWAmes,8700,1971,5,3,2,Detchd,372,,132000",
-    "48,OldTown,,1925,3,2,1,Detchd,240,,72000",
-    "49,CollgCr,7700,2001,6,3,2,Attchd,504,,180000",
-    "50,BrkSide,4800,1957,3,2,1,,,,,75000",
-    "51,Crawfor,9400,2005,7,3,2,Attchd,620,,225000",
-    "52,NWAmes,8200,,5,3,2,Attchd,440,,148000",
-    "53,Mitchel,13000,2006,8,4,2,Attchd,780,,286000",
-    "54,CollgCr,8300,2002,7,3,2,Attchd,530,,197000",
-    "55,NoRidge,15000,2010,9,5,4,BuiltIn,896,612,412000",
-  ];
-  const file = new File([new Blob([rows.join("\n")], { type: "text/csv" })], "housing_prices.csv", { type: "text/csv" });
-  await _handleFile(file);
-}
-
-// ── Dataset 3: Pacientes Médicos ─────────────────────────────────────
+// ── Dataset 2: Pacientes Médicos ─────────────────────────────────────
 // Nulos: Age (5), BloodPressure (6), Cholesterol (4), Glucose (5), BMI (5), Smoker (5)
 async function _loadSampleMedical() {
   const rows = [
@@ -363,7 +289,7 @@ async function _loadSampleMedical() {
   await _handleFile(file);
 }
 
-// ── Dataset 4: Empleados RRHH ────────────────────────────────────────
+// ── Dataset 3: Empleados RRHH ────────────────────────────────────────
 // Nulos: Department (6), Age (6), Salary (7), YearsExp (5), PerformanceScore (6), Education (6)
 async function _loadSampleHR() {
   const rows = [
