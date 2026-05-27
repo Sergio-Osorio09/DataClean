@@ -1,0 +1,60 @@
+/* charts.css — Estilos para visualizaciones de distribución */
+
+.dist-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+.hist-svg {
+  display: block;
+  width: 100%;
+}
+
+.boxplot-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.boxplot-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.boxplot-stats .lbl { color: var(--text-muted); }
+
+.cat-bar-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 50px;
+  gap: 12px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.cat-bar-label {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-bar-track {
+  height: 14px;
+  background: var(--bg-elev-1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%;
+  background: var(--accent-green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.cat-bar-count {
+  text-align: right;
+  color: var(--text-secondary);
+}
