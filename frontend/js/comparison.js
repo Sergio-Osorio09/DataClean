@@ -107,7 +107,7 @@ async function renderComparison(container) {
       </div>
 
       <!-- Table + sidebar -->
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:flex-start">
+      <div class="comparison-body">
         <div>
           <div class="card-header" style="border-bottom:0;padding-bottom:0;margin-bottom:12px">
             <h3 class="h-card" style="color:var(--text-primary)">
