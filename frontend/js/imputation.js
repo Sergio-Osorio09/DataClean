@@ -170,14 +170,236 @@ function _refreshImputation() {
 
   // Formula card
   const formulaContainer = document.getElementById("formula-container");
-  if (formulaContainer) _renderFormulaCard(formulaContainer, tech);
+  if (formulaContainer) _renderFormulaCard(formulaContainer, tech, activeCol);
 
   // Preview
   const previewContainer = document.getElementById("preview-container");
   if (previewContainer) _renderPreviewCard(previewContainer, activeCol);
 }
 
-function _renderFormulaCard(container, tech) {
+// ── Ejemplo calculado con los datos reales del dataset ───────────────
+function _buildExample(tech, col, params) {
+  if (!tech || !col) return null;
+
+  const n = col.total - col.nulls;
+  const k = (params && params.k) ? parseInt(params.k) : 3;
+  const f = v => (v == null ? '?' : v);
+
+  switch (tech.id) {
+
+    case 'mean': {
+      const sum = (col.mean * n).toFixed(2);
+      return {
+        info: `${n} observados · ${col.nulls} nulos`,
+        data: `mín ${f(col.min)}  ·  Q1 ${f(col.q25)}  ·  mediana ${f(col.median)}  ·  Q3 ${f(col.q75)}  ·  máx ${f(col.max)}`,
+        steps: [
+          `n = ${col.total} − ${col.nulls} = ${n} valores válidos`,
+          `Σxᵢ ≈ x̄ × n  =  ${f(col.mean)} × ${n}  =  ${sum}`,
+          `x̄  =  ${sum} / ${n}  =  ${f(col.mean)}`,
+        ],
+        result: f(col.mean),
+        label: `${col.nulls} nulo(s) → reemplazados por`,
+      };
+    }
+
+    case 'median': {
+      const pos = n % 2 !== 0
+        ? `posición ${Math.ceil(n / 2)} de ${n}`
+        : `media entre pos. ${n/2} y ${n/2+1} de ${n}`;
+      return {
+        info: `${n} observados · ${col.nulls} nulos`,
+        data: `mín ${f(col.min)}  ·  Q1 ${f(col.q25)}  ·  Q3 ${f(col.q75)}  ·  máx ${f(col.max)}`,
+        steps: [
+          `n = ${col.total} − ${col.nulls} = ${n} valores`,
+          `Ordenar de menor a mayor → ${pos}`,
+          `Med = ${f(col.median)}`,
+        ],
+        result: f(col.median),
+        label: `${col.nulls} nulo(s) → reemplazados por`,
+      };
+    }
+
+    case 'mode': {
+      // Numérico → derivar moda del bin más frecuente del histograma
+      if (col.histogram && col.histogram.length > 0) {
+        const top = col.histogram.reduce((a, b) => b.count > a.count ? b : a);
+        return {
+          info: `${n} observados · ${col.nulls} nulos`,
+          data: col.histogram.slice(0, 5).map(b => `[${b.label}]: ${b.count}`).join('  ') + (col.histogram.length > 5 ? '  …' : ''),
+          steps: [
+            `Recorrer histograma: buscar bin de máxima frecuencia`,
+            `Bin más frecuente: ≈ ${f(top.label)}  →  ${top.count} observaciones`,
+            `Mo ≈ ${f(top.label)}`,
+          ],
+          result: f(top.label),
+          label: `${col.nulls} nulo(s) → reemplazados por`,
+          note: 'Para datos numéricos la moda exacta es el valor individual más repetido.',
+        };
+      }
+      // Categórico / string
+      const cats = col.categories || [];
+      const pct = n > 0 && cats[0] ? (cats[0].count / n * 100).toFixed(1) : '?';
+      return {
+        info: `${n} observados · ${col.nulls} nulos`,
+        data: cats.slice(0, 4).map(c => `"${c.value}": ${c.count}`).join('  ·  ') + (cats.length > 4 ? '  …' : ''),
+        steps: [
+          `Contar frecuencias absolutas de cada categoría`,
+          `Valor más frecuente: "${col.mode}"  →  ${cats[0]?.count ?? '?'} / ${n} = ${pct}%`,
+        ],
+        result: `"${col.mode}"`,
+        label: `${col.nulls} nulo(s) → reemplazados por`,
+      };
+    }
+
+    case 'ffill': {
+      const ex = (col.type === 'categorical' || col.type === 'string')
+        ? `"${col.mode}"` : f(col.q25);
+      return {
+        info: `${col.nulls} nulos en ${col.total} filas`,
+        data: `recorre la columna de arriba (fila 0) hacia abajo (fila ${col.total - 1})`,
+        steps: [
+          `Localizar primer nulo → fila iₓ`,
+          `Tomar el último valor observado antes de iₓ: xᵢₓ₋₁ = ${ex}`,
+          `x̂ᵢₓ = ${ex}`,
+        ],
+        result: ex,
+        label: `Resultado para ese nulo (ejemplo)`,
+        note: 'Cada nulo recibe el valor de su fila previa; el resultado varía por posición.',
+      };
+    }
+
+    case 'bfill': {
+      const ex = (col.type === 'categorical' || col.type === 'string')
+        ? `"${col.mode}"` : f(col.q75);
+      return {
+        info: `${col.nulls} nulos en ${col.total} filas`,
+        data: `recorre la columna de abajo (fila ${col.total - 1}) hacia arriba (fila 0)`,
+        steps: [
+          `Localizar primer nulo → fila iₓ`,
+          `Tomar el siguiente valor observado después de iₓ: xᵢₓ₊₁ = ${ex}`,
+          `x̂ᵢₓ = ${ex}`,
+        ],
+        result: ex,
+        label: `Resultado para ese nulo (ejemplo)`,
+        note: 'Cada nulo recibe el valor de su fila siguiente; el resultado varía por posición.',
+      };
+    }
+
+    case 'linear': {
+      const x1 = col.q25 ?? col.min ?? 0;
+      const x2 = col.q75 ?? col.max ?? 1;
+      const half = ((x2 - x1) * 0.5).toFixed(4);
+      const est  = (parseFloat(x1) + parseFloat(half)).toFixed(4);
+      return {
+        info: `nulo hipotético equidistante entre Q1 y Q3 (t = 0.5)`,
+        data: `Q1 = ${f(x1)}  ·  Q3 = ${f(x2)}  ·  diferencia = ${(x2 - x1).toFixed(4)}`,
+        steps: [
+          `Puntos adyacentes: x_{i₁} = ${f(x1)},  x_{i₂} = ${f(x2)}`,
+          `Proporción: t = (i − i₁) / (i₂ − i₁) = 0.5`,
+          `x̂ = ${f(x1)} + 0.5 × (${f(x2)} − ${f(x1)}) = ${f(x1)} + ${half}`,
+          `x̂ = ${est}`,
+        ],
+        result: est,
+        label: `Valor interpolado (ejemplo con t = 0.5)`,
+        note: 'El t real de cada nulo depende de su posición entre los vecinos observados.',
+      };
+    }
+
+    case 'knn': {
+      const v1 = col.q25 ?? 0;
+      const v2 = parseFloat((col.mean ?? 0).toFixed(2));
+      const v3 = col.q75 ?? 0;
+      const d1 = 1.5, d2 = 2.3, d3 = 3.8;
+      const w1 = 1/d1, w2 = 1/d2, w3 = 1/d3;
+      const wSum = w1 + w2 + w3;
+      const est = ((v1*w1 + v2*w2 + v3*w3) / wSum).toFixed(4);
+      return {
+        info: `k = ${k}  ·  distancia euclídea  ·  pesos 1/d`,
+        data: `vecinos ilustrativos: Q1 = ${f(v1)},  media = ${v2},  Q3 = ${f(v3)}`,
+        steps: [
+          `k = ${k} vecinos más cercanos (ejemplo): ${f(v1)} (d=1.5)  ·  ${v2} (d=2.3)  ·  ${f(v3)} (d=3.8)`,
+          `wᵢ = 1/dᵢ  →  w₁ = ${w1.toFixed(3)},  w₂ = ${w2.toFixed(3)},  w₃ = ${w3.toFixed(3)}`,
+          `x̂ = (${f(v1)}·${w1.toFixed(3)} + ${v2}·${w2.toFixed(3)} + ${f(v3)}·${w3.toFixed(3)}) / ${wSum.toFixed(3)}`,
+          `x̂ = ${est}`,
+        ],
+        result: est,
+        label: `Estimación ponderada (ejemplo ilustrativo)`,
+        note: 'Los vecinos y distancias reales se calculan sobre todos los registros del dataset.',
+      };
+    }
+
+    case 'regression': {
+      const lo = (col.mean - col.std).toFixed(2);
+      const hi = (col.mean + col.std).toFixed(2);
+      return {
+        info: `MICE · LinearRegression · max_iter = 10`,
+        data: `media = ${f(col.mean)}  ·  σ = ${f(col.std)}  ·  rango = [${f(col.min)}, ${f(col.max)}]`,
+        steps: [
+          `Modelo: ŷ = β₀ + β₁x₁ + β₂x₂ + … (predictores: otras columnas numéricas)`,
+          `Valor central esperado: μ = ${f(col.mean)}`,
+          `Intervalo μ ± σ: [ ${lo},  ${hi} ]`,
+        ],
+        result: `≈ ${f(col.mean)}`,
+        label: `Predicción esperada (varía por fila)`,
+        note: 'Cada registro obtiene una predicción distinta según sus columnas predictoras.',
+      };
+    }
+
+    case 'knn_class': {
+      const cats = col.categories || [];
+      const top  = cats.slice(0, Math.min(k, 3));
+      const pct  = n > 0 && cats[0] ? (cats[0].count / n * 100).toFixed(1) : '?';
+      return {
+        info: `k = ${k}  ·  LabelEncoder + KNNImputer`,
+        data: cats.slice(0, 5).map(c => `"${c.value}": ${c.count}`).join('  ·  ') + (cats.length > 5 ? '  …' : ''),
+        steps: [
+          `Codificar: ${cats.slice(0, 3).map((c, i) => `"${c.value}" → ${i}`).join(',  ')}${cats.length > 3 ? ',  …' : ''}`,
+          `k = ${k} vecinos votan (ejemplo): ${top.map(c => `"${c.value}"`).join(', ')}`,
+          `Ganador por mayoría ponderada: "${col.mode}"  (${pct}% del dataset)`,
+        ],
+        result: `"${col.mode}"`,
+        label: `Clase predicha (ejemplo ilustrativo)`,
+        note: 'Cada nulo puede recibir una clase distinta según sus vecinos reales.',
+      };
+    }
+
+    default: return null;
+  }
+}
+
+function _exampleHTML(example, col) {
+  if (!example || !col) {
+    return `
+      <div class="example-block">
+        <div class="example-header">
+          <span class="example-eyebrow">EJEMPLO CON TUS DATOS</span>
+        </div>
+        <div class="example-placeholder">Selecciona una columna para ver el cálculo con datos reales.</div>
+      </div>`;
+  }
+  const stepsHTML = example.steps.map((s, i) => `
+    <div class="example-step">
+      <span class="example-step-num">${i + 1}</span>
+      <span>${s}</span>
+    </div>`).join('');
+
+  return `
+    <div class="example-block">
+      <div class="example-header">
+        <span class="example-eyebrow">EJEMPLO · ${col.name}</span>
+        <span class="example-info">${example.info}</span>
+      </div>
+      ${example.data ? `<div class="example-data">${example.data}</div>` : ''}
+      <div class="example-steps">${stepsHTML}</div>
+      <div class="example-result-row">
+        <span class="example-result-label">${example.label}</span>
+        <span class="example-result-val">${example.result}</span>
+      </div>
+      ${example.note ? `<p class="example-note">${example.note}</p>` : ''}
+    </div>`;
+}
+
+function _renderFormulaCard(container, tech, activeCol) {
   if (!tech) {
     container.innerHTML = `<div class="formula-card"><div class="empty-hint">Selecciona una técnica para ver su modelo matemático.</div></div>`;
     return;
@@ -215,6 +437,8 @@ function _renderFormulaCard(container, tech) {
       <p class="formula-desc">${tech.description}</p>
 
       <div class="formula-render" data-label="Modelo matemático" id="formula-render"></div>
+
+      ${_exampleHTML(_buildExample(tech, activeCol, AppState.params), activeCol)}
 
       ${paramsHTML}
 
