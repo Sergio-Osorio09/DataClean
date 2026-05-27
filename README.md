@@ -32,7 +32,7 @@ Aplicación de una sola página (SPA) con backend en FastAPI y frontend en JavaS
 | # | Técnica | Fórmula | Tipo de dato |
 |---|---------|---------|-------------|
 | 01 | **Media** | x̄ = (1/n) · Σᵢ xᵢ | Numérico |
-| 02 | **Mediana** | Med = X[(n+1)/2] si n impar (X[n/2] + X[n/2+1]) / 2 si n par | Numérico |
+| 02 | **Mediana** | Med = X[(n+1)/2] si n impar; (X[n/2] + X[n/2+1]) / 2 si n par | Numérico |
 | 03 | **Moda** | Mo = argmaxx freq(x) | Numérico / Categórico |
 | 04 | **Interpolación lineal** | x̂ᵢ = x_{i₁} + (i−i₁)/(i₂−i₁)·(x_{i₂}−x_{i₁}) | Numérico |
 | 05 | **KNN Imputación** | x̂ = Σwₖxₖ / Σwₖ ; wₖ=1/d(i,k) | Numérico |
