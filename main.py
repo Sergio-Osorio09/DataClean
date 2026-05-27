@@ -8,14 +8,28 @@ import webbrowser
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from backend.routers import upload, analyze, impute, export
+
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    """Evita que el navegador cachee JS, CSS y HTML — útil en desarrollo."""
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.endswith((".js", ".css", ".html", "/")):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
 
 app = FastAPI(
     title="DataClean Pro",
     version="1.0.0",
     description="Sistema de Análisis e Imputación de Datos CSV",
 )
+app.add_middleware(NoCacheMiddleware)
 
 # ── Registrar routers de la API ──────────────────────────────────────────────
 app.include_router(upload.router, prefix="/api", tags=["upload"])
